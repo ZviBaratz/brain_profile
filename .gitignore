@@ -1,0 +1,17 @@
+# IDE files
+.vscode/
+
+# Virtual environment
+venv/
+
+# Data files
+**.dcm
+**.nii
+**.nii.gz
+**.pkl
+
+# Local results
+**.mat
+
+# Other
+__pycache__/
