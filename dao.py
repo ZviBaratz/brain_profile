@@ -11,6 +11,80 @@ LOCATION_DICT = {
     "bias_corrected": os.path.join(BASE_DIR, "Bias-corrected"),
     "target": os.path.join(BASE_DIR, "target"),
 }
+REALIGNED_DIR_NAME = "Realigned"
+TARGET_FILE_NAME = "MPRAGE.nii.gz"
+COSTS_FILE_NAME = "realignment_costs.pkl"
+MUTUAL_INFORMATION_FILE_NAME = "mutual_information.pkl"
+
+
+def get_target_subject_dir(target_id: str):
+    target_dir = LOCATION_DICT["target"]
+    return os.path.join(target_dir, target_id)
+
+
+def get_target_scan(target_id: str):
+    target_subject_dir = get_target_subject_dir(target_id)
+    return os.path.join(target_subject_dir, TARGET_FILE_NAME)
+
+
+def get_realigned_scans_dir(target_id: str):
+    target_subject_dir = get_target_subject_dir(target_id)
+    return os.path.join(target_subject_dir, REALIGNED_DIR_NAME)
+
+
+def format_cost_function_name(cost_function: str):
+    return cost_function.replace(" ", "")
+
+
+def get_cost_function_dir(target_id: str, cost_function: str):
+    realigned_scans_dir = get_realigned_scans_dir(target_id)
+    cost_function = format_cost_function_name(cost_function)
+    return os.path.join(realigned_scans_dir, cost_function)
+
+
+def get_costs_file_path(target_id: str, cost_function: str):
+    cost_function_dir = get_cost_function_dir(target_id, cost_function)
+    return os.path.join(cost_function_dir, COSTS_FILE_NAME)
+
+
+def get_mutual_information_file_path(target_id: str, cost_function: str):
+    cost_function_dir = get_cost_function_dir(target_id, cost_function)
+    return os.path.join(cost_function_dir, MUTUAL_INFORMATION_FILE_NAME)
+
+
+def get_realigned_subject_dir(target_id: str, cost_function: str, subject_id: str):
+    cost_function_dir = get_cost_function_dir(target_id, cost_function)
+    return os.path.join(cost_function_dir, subject_id)
+
+
+def get_realigned_subject_data(
+    target_id: str, cost_function: str, subject_id: str, include_mat: bool = True
+):
+    realigned_data_dir = get_realigned_subject_dir(target_id, cost_function, subject_id)
+    files = glob.glob(os.path.join(realigned_data_dir, "*"))
+    realigned_scan = [f for f in files if f.endswith(".nii.gz")]
+    if realigned_scan:
+        if include_mat:
+            mat_file = [f for f in files if f.endswith(".mat")]
+            if mat_file:
+                return realigned_scan, mat_file
+            else:
+                return realigned_scan, None
+        else:
+            return realigned_scan
+    return None
+
+
+def generate_subject_dirs(
+    status: str, target_id: str = None, cost_function: str = None
+):
+    if status in ["raw", "skull_stripped"]:
+        pattern = os.path.join(LOCATION_DICT[status], "*/")
+        return glob.iglob(pattern)
+    elif status in ["realigned"]:
+        realigned_scans_dir = get_cost_function_dir(target_id, cost_function)
+        pattern = os.path.join(realigned_scans_dir, "*/")
+        return glob.iglob(pattern)
 
 
 def filter_scans_by_type(scans: list, scan_type: str):
