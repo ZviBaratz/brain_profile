@@ -1,11 +1,11 @@
 import glob
 import os
 
-from dao import get_scans
+from calculate_mutual_information import default_destination, get_target_scan
+from dao import get_scans, LOCATION_DICT
 from nipype.interfaces.fsl import FLIRT, FNIRT
 
-DATA_DIR = "/export/home/zvibaratz/Projects/reid/Skull-stripped"
-TARGET = "/export/home/zvibaratz/Projects/reid/target/MPRAGE.nii.gz"
+
 SERIES_TYPE = "t1"
 COST_FUNCTION = "Mutual Information"
 COST_FUNCTION_DICT = {
@@ -18,22 +18,21 @@ COST_FUNCTION_DICT = {
 }
 
 
-def create_results_directory(target: str = TARGET, cost: str = COST_FUNCTION):
-    results_location = os.path.join(os.path.dirname(target), "Realigned")
+def create_results_directory(subject_id: str, cost_function: str = COST_FUNCTION):
+    results_location = default_destination(subject_id, cost_function)
     print(f"Creating output directory in {results_location}...", end="\t")
-    output_dir = os.path.join(results_location, cost)
+    output_dir = os.path.join(results_location, cost_function)
     if os.path.isdir(output_dir):
-        print(f"\n{cost} directory already exists in {results_location}!")
+        print(f"\nOutput directory already exists in {results_location}!")
     else:
         os.makedirs(output_dir, exist_ok=False)
     return output_dir
 
 
-def run_realign(
-    base_dir: str = DATA_DIR, target: str = TARGET, cost: str = COST_FUNCTION
-):
-    scans = get_scans(base_dir, SERIES_TYPE)
-    output_dir = create_results_directory(target=target, cost=cost)
+def run_realign(subject_id: str, cost_function: str):
+    target_scan = get_target_scan(subject_id)
+    scans = get_scans(LOCATION_DICT["skull_stripped"], "t1")
+    output_dir = create_results_directory(subject_id, cost_function)
     for scan in scans:
         subject_id = scan.split("/")[-2]
         subject_results_dir = os.path.join(output_dir, subject_id)
@@ -45,7 +44,7 @@ def run_realign(
         print(f"Registering {subject_id} to target...", end="\t")
         flirt = FLIRT()
         flirt.inputs.in_file = scan
-        flirt.inputs.reference = TARGET
+        flirt.inputs.reference = target_scan
         flirt.inputs.cost = COST_FUNCTION_DICT[COST_FUNCTION]
         flirt.inputs.out_file = os.path.join(
             subject_results_dir, f"{subject_id}.nii.gz"
