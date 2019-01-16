@@ -91,6 +91,16 @@ def generate_subject_dirs(
         return glob.iglob(pattern)
 
 
+def generate_scans(status: str, target_id: str = None, cost_function: str = None):
+    if status in ["raw", "skull_stripped"]:
+        pattern = os.path.join(LOCATION_DICT[status], "**/*.nii.gz")
+        return glob.iglob(pattern)
+    elif status in ["realigned"]:
+        realigned_scans_dir = get_cost_function_dir(target_id, cost_function)
+        pattern = os.path.join(realigned_scans_dir, "**/*.nii.gz")
+        return glob.iglob(pattern)
+
+
 def filter_scans_by_type(scans: list, scan_type: str):
     return [
         scan
@@ -153,52 +163,7 @@ def get_scans(base_dir: str, scan_type: str = None, single: bool = True) -> list
     return result
 
 
-def find_cost_files(base_dir: str, file_name: str):
-    pattern = os.path.join(base_dir, "**", file_name)
-    return glob.glob(pattern, recursive=True)
-
-
-def read_costs(base_dir: str, file_name: str):
-    files = find_cost_files(base_dir, file_name)
-    d = {}
-    for cost_file in files:
-        description = cost_file.split("/")[-2]
-        with open(cost_file, "rb") as results:
-            d[description] = pickle.load(results)
-    return pd.DataFrame.from_dict(d)
-
-
-def derive_result_metric(file_path: str) -> str:
-    file_name = os.path.basename(file_path)
-    if file_name == "cost.pkl":
-        return "Cost Estimate"
-    elif file_name == "mutual_information.pkl":
-        return "Mutual Information"
-    else:
-        return None
-
-
-def derive_realignment_method(file_path: str) -> str:
-    return file_path.split("/")[-3]
-
-
-def derive_subject_id(file_path: str) -> str:
-    return file_path.split("/")[-2]
-
-
-def convert_cost_dict_to_series(path: str) -> pd.Series:
-    with open(path, "rb") as f:
-        d = pickle.load(f)
-    series = pd.Series(d)
-    method = path.split("/")[-2]
-    series.index.name = "SubjectID"
-    series.name = f"{method}_Cost"
-    series.to_pickle(path.replace("cost", "cost_df"))
-    return series
-
-
-metric_ids = {"Cost": "Cost Estimate", "MutualInformation": "Mutual Information"}
-method_ids = {
+COST_FUNCTION_DICT = {
     "CorrelationRatio": "Correlation Ratio",
     "LeastSquares": "Least Squares",
     "MutualInformation": "Mutual Information",
@@ -207,35 +172,15 @@ method_ids = {
 }
 
 
-def get_results(base_dir: str):
-    pattern = os.path.join(base_dir, "**/mutual_information.pkl")
-    files = glob.glob(pattern)
-    with open(files[0], "rb") as f:
-        sample_index = pickle.load(f).index
-    all_results = pd.DataFrame(
-        columns=["Value"],
-        index=pd.MultiIndex.from_product(
-            [
-                sample_index,
-                [
-                    "Mutual Information",
-                    "Correlation Ratio",
-                    "Normalized Correlation",
-                    "Normalized Mutual Information",
-                    "Least Squares",
-                ],
-                ["Cost Estimate", "Mutual Information"],
-            ],
-            names=["Subject ID", "Cost Function", "Metric"],
-        ),
-    )
-    for result_file in files:
-        with open(result_file, "rb") as file_content:
-            results = pickle.load(file_content)
-        method, metric = results.name.split("_")
-        metric = metric_ids[metric]
-        method = method_ids[method]
-        for subject_id in results.index:
-            all_results.at[(subject_id, method, metric), "Value"] = results[subject_id]
-    return all_results
+def get_results(target_id: str, cost_function: str):
+    path = get_mutual_information_file_path(target_id, cost_function)
+    with open(path, "rb") as f:
+        return pickle.load(f)
 
+
+def get_all_results(target_id: str):
+    results = [
+        get_results(target_id, cost_function)
+        for cost_function in COST_FUNCTION_DICT.values()
+    ]
+    return pd.concat(results, axis=1)

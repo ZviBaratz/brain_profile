@@ -5,10 +5,12 @@ import pickle
 import sklearn.metrics
 
 from dao import (
+    COST_FUNCTION_DICT,
     get_target_scan,
     generate_subject_dirs,
     get_realigned_subject_data,
     get_mutual_information_file_path,
+    get_all_results,
 )
 
 
@@ -50,7 +52,7 @@ def calculate_mutual_information_scores(
     )
     mutual_information = dict()
     print(
-        f"\n\u4052 Calculating mutual information scores for target {target_id} after {cost_function} realignment \u4052\n"
+        f"\n\u0FD4 Calculating mutual information scores for target {target_id} after {cost_function} realignment \u0FD4\n"
     )
     for subject_dir in realigned_subject_dirs:
         subject_id = subject_dir.split("/")[-2]
@@ -82,3 +84,9 @@ def calculate_mutual_information_scores(
                 pickle.dump(mutual_information, mutual_information_file)
             print("\u2714")
         return mutual_information
+
+
+def calculate_all_mutual_information_scores(target_id: str) -> pd.DataFrame:
+    for cost_function in COST_FUNCTION_DICT.values():
+        calculate_mutual_information_scores(target_id, cost_function)
+    return get_all_results(target_id)
