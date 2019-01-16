@@ -1,8 +1,6 @@
-import glob
 import os
 
 from dao import LOCATION_DICT, get_scans
-from nipype import Node
 from nipype.interfaces.fsl import BET
 
 

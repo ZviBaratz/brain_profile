@@ -24,7 +24,11 @@ def get_target_subject_dir(target_id: str):
 
 def get_target_scan(target_id: str):
     target_subject_dir = get_target_subject_dir(target_id)
-    return os.path.join(target_subject_dir, TARGET_FILE_NAME)
+    target_scan_path = os.path.join(target_subject_dir, TARGET_FILE_NAME)
+    if os.path.isfile(target_scan_path):
+        return os.path.join(target_subject_dir, TARGET_FILE_NAME)
+    else:
+        raise FileNotFoundError(f"Failed to locate target scan in {target_scan_path}")
 
 
 def get_realigned_scans_dir(target_id: str):
@@ -67,11 +71,11 @@ def get_realigned_subject_data(
         if include_mat:
             mat_file = [f for f in files if f.endswith(".mat")]
             if mat_file:
-                return realigned_scan, mat_file
+                return realigned_scan[0], mat_file[0]
             else:
-                return realigned_scan, None
+                return realigned_scan[0], None
         else:
-            return realigned_scan
+            return realigned_scan[0]
     return None
 
 

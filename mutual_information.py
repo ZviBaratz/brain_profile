@@ -49,8 +49,12 @@ def calculate_mutual_information_scores(
         "realigned", target_id, cost_function
     )
     mutual_information = dict()
+    print(
+        f"\n\u4052 Calculating mutual information scores for target {target_id} after {cost_function} realignment \u4052\n"
+    )
     for subject_dir in realigned_subject_dirs:
         subject_id = subject_dir.split("/")[-2]
+        print(f"Calculating mutual information for {subject_id}...", end="\t")
         realigned_scan_path = get_realigned_subject_data(
             target_id, cost_function, subject_id, include_mat=False
         )
@@ -58,16 +62,23 @@ def calculate_mutual_information_scores(
             target_scan, realigned_scan_path
         )
         mutual_information[subject_id] = mutual_information_score
+        print(f"\u2714\t[{mutual_information_score}]")
 
     if as_series:
-        series = mutual_information_dict_to_series(mutual_information)
+        print("Converting to pandas series object...", end="\t")
+        series = mutual_information_dict_to_series(mutual_information, cost_function)
+        print("\u2714")
         if serialize:
             file_path = get_mutual_information_file_path(target_id, cost_function)
+            print(f"Saving to {file_path}...", end="\t")
             series.to_pickle(file_path)
+            print("\u2714")
         return series
     else:
         if serialize:
             file_path = get_mutual_information_file_path(target_id, cost_function)
+            print(f"Saving to {file_path}...", end="\t")
             with open(file_path, "wb") as mutual_information_file:
                 pickle.dump(mutual_information, mutual_information_file)
+            print("\u2714")
         return mutual_information
