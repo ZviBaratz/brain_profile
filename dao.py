@@ -2,6 +2,8 @@ import glob
 import os
 import pandas as pd
 import pickle
+import random
+import string
 
 SERIES_DICT = {"t1": ["MPRAGE", "T1W"], "t2": ["FLAIR", "t2_"], "ir": ["IR-EPI"]}
 BASE_DIR = os.getcwd()
@@ -15,6 +17,33 @@ REALIGNED_DIR_NAME = "Realigned"
 TARGET_FILE_NAME = "MPRAGE.nii.gz"
 COSTS_FILE_NAME = "realignment_costs.pkl"
 MUTUAL_INFORMATION_FILE_NAME = "mutual_information.pkl"
+
+
+def id_generator(size=8, chars=string.ascii_uppercase + string.digits):
+    return "".join(random.choice(chars) for _ in range(size))
+
+
+def anonymize_data():
+    subject_dirs = glob.glob(os.path.join(LOCATION_DICT["raw"], "*"))
+    associations = dict()
+    for subject_dir in subject_dirs:
+        subject_id = os.path.basename(subject_dir)
+        new_id = id_generator()
+        dest = subject_dir.replace(subject_id, new_id)
+        os.rename(subject_dir, dest)
+        associations[subject_id] = new_id
+    target_dirs = glob.glob(os.path.join(LOCATION_DICT["target"], "*"))
+    for target_dir in target_dirs:
+        target_id = os.path.basename(target_dir)
+        new_id = associations.get(target_id)
+        if new_id:
+            dest = target_dir.replace(target_id, new_id)
+            os.rename(target_dir, dest)
+        else:
+            print(f"WARNING! Could not determine {target_id} source subject!")
+    with open("associations.pkl", "wb") as key_file:
+        pickle.dump(associations, key_file)
+    return associations
 
 
 def get_target_subject_dir(target_id: str):
